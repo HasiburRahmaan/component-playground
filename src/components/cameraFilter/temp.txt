@@ -1,0 +1,66 @@
+import { useEffect, useRef, useState } from "react";
+
+const CameraCapture = () => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const frameSrc = "/frame.png"; // Replace with your PNG frame path
+
+  useEffect(() => {
+    const startCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error("Error accessing camera:", error);
+      }
+    };
+
+    startCamera();
+
+    return () => {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  const captureImage = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const context = canvasRef.current.getContext("2d");
+    if (!context) return;
+
+    const videoWidth = videoRef.current.videoWidth;
+    const videoHeight = videoRef.current.videoHeight;
+    canvasRef.current.width = videoWidth;
+    canvasRef.current.height = videoHeight;
+
+    // Draw the captured image
+    context.drawImage(videoRef.current, 0, 0, videoWidth, videoHeight);
+
+    // Load and overlay the PNG frame
+    const frameImage = new Image();
+    frameImage.src = frameSrc;
+    frameImage.onload = () => {
+      context.drawImage(frameImage, 0, 0, videoWidth, videoHeight);
+      setCapturedImage(canvasRef.current.toDataURL("image/png"));
+    };
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <video ref={videoRef} autoPlay className="border rounded-lg w-[300px] h-[200px]" />
+      <button onClick={captureImage} className="bg-blue-500 text-white px-4 py-2 rounded-lg">
+        Capture with Frame
+      </button>
+      <canvas ref={canvasRef} className="hidden" />
+      {capturedImage && <img src={capturedImage} alt="Captured" className="mt-4 border rounded-lg w-[300px]" />}
+    </div>
+  );
+};
+
+export default CameraCapture;
